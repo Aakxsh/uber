@@ -55,3 +55,49 @@ module.exports.registerUser = async (req, res, next) => {
         next(error);
     }
 };
+
+
+module.exports.logInUser = async (req, res, next) =>{
+try {
+        const errors = validationResult(req);
+        if(!errors.isEmpty()){
+            return res.status(200)
+            .json({errors: errors.array()})
+        }
+    
+    
+    const {email, password} = req.body;
+    
+    
+    const user = await userModel.findOne({email}).select('+password');
+    
+    if(!user){
+        return res.status(200)
+        .json({message:'User not found'});
+    }
+    
+    const isMatch = await user.comparePassword(password);
+    
+    if(!isMatch){
+        return res.status(401)
+        .json({message:'Invalid Email or Password'})
+    }
+    
+    const token = user.generateAuthToken();
+    return res
+    .status(200)
+    .json({message:'Login Successful',
+        token,
+        user:{
+            id:user._id,
+            fullName:user.fullName,
+            email:user.email
+        },
+    })
+
+} catch (error) {
+    console.log('Error in logInUser : ', error.message)
+    return res
+    .status(500)
+    .json({message:'Internal server error'});
+}}

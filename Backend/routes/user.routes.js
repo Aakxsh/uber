@@ -19,10 +19,28 @@ router.post('/register',[
     body('password')
     .isStrongPassword()
     .isLength({min:8})
-    .withMessage('Password must be alteast 8 charachter')
+    .withMessage('Password must be strong (alteast 8 charachter) include upper/lowercase, number, and symbol')
 
 ],
 userController.registerUser)
+
+
+router.post('/login',[
+    body('email')
+    .isEmail()
+    .withMessage('Invalid Email'),
+
+    body('password')
+    .isLength({min:8})
+    .withMessage('Password should be atleat 8 charachter')
+
+],userController.logInUser);
+
+
+router.post('/logout',[
+    body()
+])
+
 
 
 module.exports = router;
