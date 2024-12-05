@@ -1,7 +1,11 @@
-const { validationResult } = require('express-validator');
+const { validationResult, body } = require('express-validator');
 const userService = require('../services/user.services');
 const userModel = require('../models/user.models');
+const blacklistedTokenModel = require('../models/blacklistToken.model');
+const blacklistTokenModel = require('../models/blacklistToken.model');
 
+
+// Register User
 module.exports.registerUser = async (req, res, next) => {
     try {
         const errors = validationResult(req);
@@ -56,7 +60,7 @@ module.exports.registerUser = async (req, res, next) => {
     }
 };
 
-
+// userLogin
 module.exports.logInUser = async (req, res, next) =>{
 try {
         const errors = validationResult(req);
@@ -101,3 +105,24 @@ try {
     .status(500)
     .json({message:'Internal server error'});
 }}
+
+
+// userProfile
+module.exports.getUserProfile = async (req, res, next)=>{
+   return res
+   .status(200)
+   .json(req.user)
+}
+
+
+// userlogout
+module.exports.logoutUser = async (req, res, next)=>{
+    res.clearCookie('token');
+    const token = req.cookies.token || req.heaaders.generateAuthToken.split(' ')[1];
+
+    await blacklistTokenModel.create({token})
+
+    res
+    .status(200)
+    .json({message:'logout successfull'});
+ }
