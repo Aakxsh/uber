@@ -2,6 +2,7 @@ const userModel = require('../models/user.models'); // User model
 const blacklistedTokenModel = require('../models/blacklistToken.model'); // Blacklisted token model
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const captainModel = require('../models/captain.model');
 
 
 
@@ -65,7 +66,7 @@ try {
             .json({message:'Unauthorized. Token is requires'})
         }
     
-        const isBlacklisted = await blacklistTokenModel.findOne({token});
+        const isBlacklisted = await blacklistedTokenModel.findOne({token});
     
         if(isBlacklisted){
             return res

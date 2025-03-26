@@ -10,12 +10,12 @@ const router = express.Router();
 router.post(
     '/register',
     [
-        body('firstName')
+        body('fullName.firstName')
         .isString()
         .isLength({ min: 3 })
         .withMessage('First name must be at least 3 characters long'),
 
-        body('lastName')
+        body('fullName.lastName')
         .isString()
         .isLength({ min: 3 })
         .withMessage('Last name must be at least 3 characters long'),

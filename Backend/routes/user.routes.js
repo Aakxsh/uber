@@ -17,7 +17,7 @@ router.post('/register',[
 
     body('fullName.lastName')
     .isLength({min:4})
-    .withMessage('lastName must be atleast 4 charachter'),
+    .withMessage('LastName must be atleast 4 charachter'),
 
     body('password')
     .isStrongPassword()

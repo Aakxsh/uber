@@ -2,149 +2,163 @@ const blacklistTokenModel = require('../models/blacklistToken.model');
 const captainModel = require('../models/captain.model');
 const captainService = require('../services/captain.service');
 const { validationResult } = require('express-validator');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
-
-//register Captain
+//register captain
 module.exports.registerCaptain = async (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        const {
-            fullName,
-            email,
-            password,
-            phoneNumber,
-            captain: { license },
-            vehicle: { vehicleType, color, capacity, plate },
-            lat,
-            long,
-        } = req.body;
-
-        // Validate required fields
-        if (!license || !vehicleType) {
-            return res.status(400).json({ error: 'Missing required fields: license or vehicleType' });
-        }
-
-        // Check for duplicates
-        const existingCaptain = await captainModel.findOne({
-            $or: [{ email }, { 'captain.license': license }, { 'vehicle.plate': plate }],
-        });
-        if (existingCaptain) {
-            return res.status(400).json({ error: 'Email, license, or plate already exists.' });
-        }
-
-        // Hash password
-        const hashedPassword = await captainModel.hashPassword(password);
-
-        // Create new captain
-        // const captain = new captainModel({
-        //     fullName: { firstName, lastName },
-        //     email,
-        //     password: hashedPassword,
-        //     phoneNumber,
-        //     captain: { license },
-        //     vehicle: { vehicleType, color, capacity, plate },
-        //     locations: { lat, long },
-        // });
-
-
-        const user = await captainService.createUser({
-            fullName: {
-                firstName: fullName.firstName,
-                lastName: fullName.lastName,
-            },
-            email,
-            password: hashedPassword,
-            license,
-            phoneNumber,
-            vehicle: {
-                vehicleType,
-                color,
-                capacity,
-                plate,
-            },
-            lat,
-            long,
-        });
-
-
-
-        await captain.save();
-
-        // Generate token
-        const token = captain.generateAuthToken();
-
-        res.status(201).json({
-            message: 'Captain registered successfully',
-            token,
-            captain: {
-                id: captain._id,
-                fullName: captain.fullName,
-                email: captain.email,
-            },
-        });
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+  
+      const {
+        fullName = {},
+        email,
+        password,
+        phoneNumber,
+        captain = {},
+        vehicle = {},
+        lat,
+        long,
+      } = req.body;
+  
+      if (!fullName.firstName || !fullName.lastName || !email || !password || !phoneNumber || !captain.license || !vehicle.vehicleType) {
+        return res.status(400).json({ error: 'Missing required fields. Please check all inputs.' });
+      }
+  
+      // Check for duplicates
+      const existingCaptain = await captainModel.findOne({
+        $or: [
+          { email },
+          { phoneNumber },
+          { 'captain.license': captain.license },
+          { 'vehicle.plate': vehicle.plate },
+        ],
+      });
+  
+      if (existingCaptain) {
+        return res.status(400).json({ error: 'Email, License, Phone Number, or Plate already exists.' });
+      }
+  
+      // Hash password using bcrypt
+      const hashedPassword = await bcrypt.hash(password, 10);
+  
+      // Create captain using service
+      const captainData = await captainService.createCaptain({
+        firstName: fullName.firstName,
+        lastName: fullName.lastName,
+        email,
+        password: hashedPassword,
+        phoneNumber,
+        license: captain.license,
+        vehicleType: vehicle.vehicleType,
+        color: vehicle.color,
+        capacity: vehicle.capacity,
+        plate: vehicle.plate,
+        lat,
+        long,
+      });
+  
+      // Generate token
+      const token = captainData.generateAuthToken();
+  
+      res.status(201).json({
+        message: 'Captain registered successfully',
+        token,
+        captain: {
+          id: captainData._id,
+          fullName: captainData.fullName,
+          email: captainData.email,
+        },
+      });
+  
     } catch (error) {
-        // if (error.code === 11000) {
-        //     return res.status(400).json({ error: 'Email already exists. Please use a different email.' });
-        // // console.error('Error in registerCaptain:', error.message);
-        res.status(500).json({ error: 'Internal server error.' });
-    };
-};
+      console.error('Error in registerCaptain:', error);
+      res.status(500).json({ error: error.message || 'Internal server error.' });
+    }
+  };
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 //login Captain
 module.exports.loginCaptain = async (req, res) => {
-        try {
-            const { email, password } = req.body;
-    
-            // Validate input
-            if (!email || !password) {
-                return res.status(400).json({ message: 'Email and password are required.' });
-            }
-    
-            // Check if captain exists
-            const captain = await captainModel.findOne({ email }).select('+password'); // Include password for comparison
-            if (!captain) {
-                return res.status(401).json({ message: 'Invalid email or password.' });
-            }
-    
-            // Compare passwords
-            const isPasswordValid = await bcrypt.compare(password, captain.password);
-            if (!isPasswordValid) {
-                return res.status(401).json({ message: 'Invalid email or password.' });
-            }
-    
-            // Generate auth token
-            const token = jwt.sign({ id: captain._id, email: captain.email }, process.env.JWT_SECRET, {
-                expiresIn: '24h',
-            });
-    
-            // Send token in cookie and response
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-            });
-    
-            res.status(200).json({
-                message: 'Login successful',
-                token,
-                captain: {
-                    id: captain._id,
-                    fullName: captain.fullName,
-                    email: captain.email,
-                },
-            });
-        } catch (error) {
-            console.error('Error in loginCaptain:', error.message);
-            res.status(500).json({ message: 'Internal server error' });
-        }
-    
-    };
-    
+    try {
+      const { email, password } = req.body;
+  
+      // Validate input
+      if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required.' });
+      }
+  
+      // Check if captain exists and select password
+      const captain = await captainModel.findOne({ email }).select('+password');
+      if (!captain) {
+        return res.status(401).json({ message: 'Invalid email or password. Email not found.' });
+      }
+  
+      // Compare hashed passwords using bcrypt
+      const isPasswordValid = await bcrypt.compare(password, captain.password);
+      if (!isPasswordValid) {
+        console.log('Password mismatch. Entered:', password, 'Stored:', captain.password);
+        return res.status(401).json({ message: 'Invalid email or password. Password mismatch.' });
+      }
+  
+      // Generate JWT token
+      if (!process.env.JWT_SECRET) {
+        return res.status(500).json({ message: 'JWT_SECRET is missing in environment variables.' });
+      }
+  
+      const token = captain.generateAuthToken ? captain.generateAuthToken() : jwt.sign(
+        { id: captain._id, email: captain.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+  
+      // Send token in cookie
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+      });
+  
+      res.status(200).json({
+        message: 'Login successful',
+        token,
+        captain: {
+          id: captain._id,
+          fullName: captain.fullName,
+          email: captain.email,
+        },
+      });
+  
+    } catch (error) {
+      console.error('Error in loginCaptain:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  };
+  
+
+
+
+
+
 
 
 //get captain profile
@@ -165,7 +179,7 @@ module.exports.logoutCaptain = async (req, res, next) =>{
     res.clearCookie('token',{
         httpOnly:true,
         secure:process.env.NODE_ENV === 'production',
-        sameSite:'strict' // prevent from xss xcripting attack
+        sameSite:'strict' // prevent from xss scripting attack
     });
 
     res
@@ -254,6 +268,8 @@ module.exports.logoutCaptain = async (req, res, next) =>{
 
 
 //delete captain profile
+module.exports.delCaptainProfile = async (req, res, next) =>{
 
+}
 
 
