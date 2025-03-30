@@ -5,132 +5,178 @@ const { validationResult } = require('express-validator');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-//register captain
+
 module.exports.registerCaptain = async (req, res) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+      const { fullName, email, password, phoneNumber, captain, vehicle, lat, long } = req.body;
+  
+      if (!fullName?.firstName || !fullName?.lastName || !email || !password || !phoneNumber || !captain?.license || !vehicle?.vehicleType || lat === undefined || long === undefined) {
+        return res.status(400).json({ error: 'All fields are required. Please check your input.' });
       }
   
-      const {
-        fullName = {},
-        email,
-        password,
-        phoneNumber,
-        captain = {},
-        vehicle = {},
-        lat,
-        long,
-      } = req.body;
-  
-      if (!fullName.firstName || !fullName.lastName || !email || !password || !phoneNumber || !captain.license || !vehicle.vehicleType) {
-        return res.status(400).json({ error: 'Missing required fields. Please check all inputs.' });
-      }
-  
-      // Check for duplicates
+      // Check if Captain exists
       const existingCaptain = await captainModel.findOne({
-        $or: [
-          { email },
-          { phoneNumber },
-          { 'captain.license': captain.license },
-          { 'vehicle.plate': vehicle.plate },
-        ],
+        $or: [{ email }, { phoneNumber }, { 'captain.license': captain.license }, { 'vehicle.plate': vehicle.plate }],
       });
   
       if (existingCaptain) {
         return res.status(400).json({ error: 'Email, License, Phone Number, or Plate already exists.' });
       }
   
-      // Hash password using bcrypt
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      // Create captain using service
-      const captainData = await captainService.createCaptain({
-        firstName: fullName.firstName,
-        lastName: fullName.lastName,
+      // Create captain data
+      const newCaptain = new captainModel({
+        fullName,
         email,
-        password: hashedPassword,
+        password,
         phoneNumber,
-        license: captain.license,
-        vehicleType: vehicle.vehicleType,
-        color: vehicle.color,
-        capacity: vehicle.capacity,
-        plate: vehicle.plate,
-        lat,
-        long,
+        captain,
+        vehicle,
+        locations: { lat, long }, // ✅ Corrected to use locations
       });
   
-      // Generate token
-      const token = captainData.generateAuthToken();
+      await newCaptain.save();
   
-      res.status(201).json({
-        message: 'Captain registered successfully',
-        token,
-        captain: {
-          id: captainData._id,
-          fullName: captainData.fullName,
-          email: captainData.email,
-        },
+      // Generate JWT token
+      const token = jwt.sign({ id: newCaptain._id, email: newCaptain.email }, process.env.JWT_SECRET, {
+        expiresIn: '24h',
       });
   
+      res.status(201).json({ message: 'Captain registered successfully', token,
+        captain:{
+            id: newCaptain._id,
+            fullName: newCaptain.fullName,
+            email: newCaptain.email
+        }
+       });
     } catch (error) {
       console.error('Error in registerCaptain:', error);
       res.status(500).json({ error: error.message || 'Internal server error.' });
     }
   };
+
+
+
+
+
+
+
+
+
+
+// // Register captain
+// module.exports.registerCaptain = async (req, res) => {
+//     try {
+//       console.log("Incoming Request Body:", req.body); // Debug incoming data
+  
+//       const errors = validationResult(req);
+//       if (!errors.isEmpty()) {
+//         console.log("Validation Errors:", errors.array()); // Debug validation errors
+//         return res.status(400).json({ errors: errors.array() });
+//       }
+  
+//       const {
+//         fullName = {},
+//         email,
+//         password,
+//         phoneNumber,
+//         captain = {},
+//         vehicle = {},
+//         lat,
+//         long,
+//       } = req.body;
+  
+//       console.log("Extracted Values:", { fullName, email, password, phoneNumber, captain, vehicle, lat, long });
+  
+//       if (!fullName.firstName || !fullName.lastName || !email || !password || !phoneNumber || !captain.license || !vehicle.vehicleType ) {
+//         return res.status(400).json({ error: 'All fields are required. Please check your input.' });
+//       }
+  
+//       const existingCaptain = await captainModel.findOne({
+//         $or: [
+//           { email },
+//           { phoneNumber },
+//           { 'captain.license': captain.license },
+//           { 'vehicle.plate': vehicle.plate },
+//         ],
+//       });
+  
+//       if (existingCaptain) {
+//         return res.status(400).json({ error: 'Email, License, Phone Number, or Plate already exists.' });
+//       }
+  
+//       const hashedPassword = await bcrypt.hash(password, 10);
+  
+//       const captainData = await captainService.createCaptain({
+//         firstName: fullName.firstName,
+//         lastName: fullName.lastName,
+//         email,
+//         password: hashedPassword,
+//         phoneNumber,
+//         license: captain.license,
+//         vehicleType: vehicle.vehicleType,
+//         color: vehicle.color,
+//         capacity: vehicle.capacity,
+//         plate: vehicle.plate,
+//         lat,
+//         long,
+//       });
+  
+//       const token = captainData.generateAuthToken();
+  
+//       res.status(201).json({
+//         message: 'Captain registered successfully',
+//         token,
+//         captain: {
+//           id: captainData._id,
+//           fullName: captainData.fullName,
+//           email: captainData.email,
+//         },
+//       });
+  
+//     } catch (error) {
+//       console.error('Error in registerCaptain:', error);
+//       res.status(500).json({ error: error.message || 'Internal server error.' });
+//     }
+//   };
+  
   
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-//login Captain
+//login captain
 module.exports.loginCaptain = async (req, res) => {
     try {
       const { email, password } = req.body;
   
-      // Validate input
+      // Check for missing fields
       if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required.' });
       }
   
-      // Check if captain exists and select password
+      // Find the captain by email and ensure the password is fetched
       const captain = await captainModel.findOne({ email }).select('+password');
       if (!captain) {
         return res.status(401).json({ message: 'Invalid email or password. Email not found.' });
       }
   
-      // Compare hashed passwords using bcrypt
+      // Compare the entered password with the stored hashed password
       const isPasswordValid = await bcrypt.compare(password, captain.password);
       if (!isPasswordValid) {
-        console.log('Password mismatch. Entered:', password, 'Stored:', captain.password);
         return res.status(401).json({ message: 'Invalid email or password. Password mismatch.' });
       }
   
-      // Generate JWT token
+      // Generate JWT token securely
       if (!process.env.JWT_SECRET) {
         return res.status(500).json({ message: 'JWT_SECRET is missing in environment variables.' });
       }
   
-      const token = captain.generateAuthToken ? captain.generateAuthToken() : jwt.sign(
+      const token = jwt.sign(
         { id: captain._id, email: captain.email },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
   
-      // Send token in cookie
+      // Optionally set token as HTTP-only cookie
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -138,6 +184,7 @@ module.exports.loginCaptain = async (req, res) => {
         maxAge: 24 * 60 * 60 * 1000, // 1 day
       });
   
+      // Successful login response
       res.status(200).json({
         message: 'Login successful',
         token,
@@ -153,6 +200,79 @@ module.exports.loginCaptain = async (req, res) => {
       res.status(500).json({ message: 'Internal server error' });
     }
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// //login Captain
+// module.exports.loginCaptain = async (req, res) => {
+//     try {
+//       const { email, password } = req.body;
+  
+//       // Validate input
+//       if (!email || !password) {
+//         return res.status(400).json({ message: 'Email and password are required.' });
+//       }
+  
+//       // Check if captain exists and select password
+//       const captain = await captainModel.findOne({ email }).select('+password');
+//       if (!captain) {
+//         return res
+//         .status(401)
+//         .json({ message: 'Invalid email or password. Email not found.' });
+//       }
+  
+    
+//       const isPasswordValid = await bcrypt.compare(password, captain.password);
+//       if (!isPasswordValid) {
+//         return res.status(401).json({ message: 'Invalid email or password.' });
+//       }
+      
+  
+//       // Generate JWT token
+//       if (!process.env.JWT_SECRET) {
+//         return res.status(500).json({ message: 'JWT_SECRET is missing in environment variables.' });
+//       }
+  
+//       const token = captain.generateAuthToken ? captain.generateAuthToken() : jwt.sign(
+//         { id: captain._id, email: captain.email },
+//         process.env.JWT_SECRET,
+//         { expiresIn: '24h' }
+//       );
+  
+//       // Send token in cookie
+//       res.cookie('token', token, {
+//         httpOnly: true,
+//         secure: process.env.NODE_ENV === 'production',
+//         sameSite: 'strict',
+//         maxAge: 24 * 60 * 60 * 1000, // 1 day
+//       });
+  
+//       res.status(200).json({
+//         message: 'Login successful',
+//         token,
+//         captain: {
+//           id: captain._id,
+//           fullName: captain.fullName,
+//           email: captain.email,
+//         },
+//       });
+  
+//     } catch (error) {
+//       console.error('Error in loginCaptain:', error);
+//       res.status(500).json({ message: 'Internal server error' });
+//     }
+//   };
   
 
 
