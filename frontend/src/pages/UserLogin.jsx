@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useContext} from 'react';
 import { Link } from 'react-router-dom';
+import { UserDataContext } from '../Context/UserContext';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const UserLogin = () => {
   const [email, setEmail] = React.useState('');
@@ -7,21 +10,45 @@ const UserLogin = () => {
   const [userData, setUserData] = React.useState({});
   const [error, setError] = React.useState(''); // Error state for form validation
 
-  const submitHandler = (e) => {
+  const {user, setUser} = useContext(UserDataContext)
+  const navigate = useNavigate()
+
+  const submitHandler = async(e) => {
     e.preventDefault(); // Prevent page reload
-    setUserData({email:email, password:password});
-    setEmail('');
-    setPassword('');
+    const userData = {
+      email: email,
+      password: password
+    }
 
+try {
+      const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/users/login`, userData)
+
+      console.log('Login Response Data:', response.data);
+
+
+      if (response.status === 200){
+        const data = response.data
+        setUser(data.user)
+        localStorage.setItem('token', response.data.token)
+        console.log('Stored Token:', localStorage.getItem('token'));
+        navigate("/NewHome")
+      }
   
-
-    // Log the email and password
-    console.log('Email:', email, 'Password:', password);
-
-    // You can also add additional logic here, like calling an API to authenticate the user
-
-    // Clear error message if everything is fine
-    setError('');
+      setEmail('');
+      setPassword('');
+  
+  
+      // Log the email and password
+      console.log('Email:', email, 'Password:', password);
+  
+      // You can also add additional logic here, like calling an API to authenticate the user
+  
+      // Clear error message if everything is fine
+      setError('');
+} catch (error) {
+  console.log("Login Failed:", error.response ? error.response.data : error.message);
+  setError("Login failed. Please check your credentials.");
+}
   };
 
   return (
@@ -86,7 +113,7 @@ const UserLogin = () => {
           </button>
 
           {/* Captain Login */}
-          <Link to={'/captainLogin'} className="w-full my-5 flex items-center justify-center bg-[#d3d300] text-black py-3 rounded hover:bg-gray-800 transition duration-300 font-semibold text-lg">
+          <Link to={'/captainLogin'} className="w-full my-5 flex items-center justify-center bg-[#d3d300] text-black py-3 rounded hover:bg-yellow-500 transition duration-300 font-semibold text-lg">
             Sign In as Captain
           </Link>
         </form>
