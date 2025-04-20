@@ -1,12 +1,13 @@
 import React, { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserDataContext } from "../Context/UserContext"; 
+// import { UserDataContext } from "../Context/UserContext"; 
+import { CaptainDataContext } from "../Context/CaptainContext"; 
 import axios from "axios";
 
 const validVehicleTypes = ['Bike', 'Car', 'Autorickshaw', 'ElectricBike'];
 
 const CaptainSignup = () => {
-  const { setUser } = useContext(UserDataContext); 
+  const { setCaptain } = useContext(CaptainDataContext); 
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -71,9 +72,9 @@ const CaptainSignup = () => {
 
       if (response.status === 201) {
         const data = response.data;
-        setUser(data.captain);
+        setCaptain(data.captain);
         localStorage.setItem('token', data.token);
-        navigate("/CaptainDashboard");
+        navigate("/captainDashboard");
       }
     } catch (error) {
       setError(error.response?.data?.error || "Signup failed. Please try again.");

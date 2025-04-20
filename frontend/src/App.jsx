@@ -21,21 +21,33 @@ const App = () => {
     <div>
       <Routes>
         <Route path = '/newHome' element = {<UserProtectWrapper><NewHome/></UserProtectWrapper>}/>
+
         <Route path = '/home' element = {<Home />}/>
+
         <Route path = '/userLogin' element = {<UserLogin />}/>
+
         <Route path = '/userSignup' element = {<UserSignup />}/>
+
         <Route path = '/captainLogin' element = {<CaptainLogin/>}/>
+
         <Route path = '/captainSignup' element = {<CaptainSignup/>}/>
+
         <Route path = '/forgotPassword' element = {<ForgotPassword/>}/>
+
         {/* <Routes path = '/privacy-Policy' element = {<PrivacyPolicy/>}/> */}
         <Route path = '/userContext' element = {<UserContext/>}></Route>
+
         <Route path = "/user/logout" element={<UserProtectWrapper>
           <UserLogout />
         </UserProtectWrapper>}>
         </Route>
+
+
         <Route path='/captainDashboard' element = {<CaptainProtectWrapper>
           <CaptainDashboard />
-        </CaptainProtectWrapper>}></Route>
+        </CaptainProtectWrapper>}>
+        </Route>
+        
       </Routes>
     </div>
   )
