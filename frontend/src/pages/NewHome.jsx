@@ -9,6 +9,7 @@ import LookingForDriver from '../components/LookingForDriver';
 import WaitingForDriver from '../components/WaitingForDriver';
 import SucessfullyDriverDetails from '../components/SucessfullyDriverDetails';
 import RideStartedPanel from '../components/RideStartedPanel';
+import MapView from '../components/MapView';
 
 
 
@@ -122,9 +123,7 @@ const NewHome = () => {
     <div className='h-screen relative'>
       <img className='w-16 absolute left-5 top-5' src='https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png' alt='Uber logo' />
 
-      <div className='h-screen w-screen'>
-        <img className='h-full w-full object-cover' src='https://i.redd.it/g2r5ewz4tqk11.jpg' alt='Background' />
-      </div>
+     <MapView />
 
       <div className='flex flex-col justify-end h-screen absolute top-0 w-full'>
         {isLoading ? (
